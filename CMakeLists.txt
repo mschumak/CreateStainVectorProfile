@@ -5,7 +5,7 @@ SET(CMAKE_CXX_STANDARD 17)
 INCLUDE(FetchContent)
 
 #Note which version of Sedeen Viewer this plugin was last compiled and tested with
-SET(SEDEENSDK_VERSION "5.4.4.20191024" CACHE STRING "Last version of Sedeen Viewer the plugin was compiled and tested with")
+SET(SEDEENSDK_VERSION "5.5.0.20200610" CACHE STRING "Last version of Sedeen Viewer the plugin was compiled and tested with")
 
 # Define project description variables
 SET( DISPLAY_NAME_TEXT "Create Stain Vector Profile" CACHE STRING "Name of the plugin as it should be displayed in Sedeen Viewer")
@@ -16,14 +16,14 @@ SET( DEVELOPER_TEXT "Sunnybrook Research Institute" CACHE STRING "Name of the au
 SET(PROGRAMFILESX86 "PROGRAMFILES\(X86\)")
 FIND_PACKAGE( SEDEENSDK REQUIRED 
   HINTS ../../.. 
-        "$ENV{${PROGRAMFILESX86}}/Sedeen Viewer SDK/v5.4.4.20191024/msvc2017"
-        "$ENV{PROGRAMFILES}/Sedeen Viewer SDK/v5.4.4.20191024/msvc2017" )
+        "$ENV{${PROGRAMFILESX86}}/Sedeen Viewer SDK/v5.5.0.20200610/msvc2017"
+        "$ENV{PROGRAMFILES}/Sedeen Viewer SDK/v5.5.0.20200610/msvc2017" )
         
 # Load the included OpenCV libs
 FIND_PACKAGE(SEDEENSDK_OPENCV REQUIRED
   HINTS ../../..
-        "$ENV{${PROGRAMFILESX86}}/Sedeen Viewer SDK/v5.4.4.20191024/msvc2017"
-        "$ENV{PROGRAMFILES}/Sedeen Viewer SDK/v5.4.4.20191024/msvc2017" )
+        "$ENV{${PROGRAMFILESX86}}/Sedeen Viewer SDK/v5.5.0.20200610/msvc2017"
+        "$ENV{PROGRAMFILES}/Sedeen Viewer SDK/v5.5.0.20200610/msvc2017" )
 
 #Configure MLPACK (requires some Boost libraries)
 SET(MLPACK_REQUIRED_BOOST_COMPONENTS "serialization" "program_options")
@@ -108,17 +108,17 @@ INCLUDE_DIRECTORIES( ${INCLUDE_DIRECTORIES}
                      ${${TinyXML2Name}_SOURCE_DIR}
                      ${OPTICAL_DENSITY_THRESHOLD_DIR}
                      ${STAIN_ANALYSIS_DIR}
-                     ${MLPACK_INCLUDE_DIR}
                      ${ARMADILLO_INCLUDE_DIR}
+                     ${MLPACK_INCLUDE_DIR}
                      )
 
 LINK_DIRECTORIES( ${LINK_DIRECTORIES} 
                   ${SEDEENSDK_LIBRARY_DIR} 
                   ${SEDEENSDK_OPENCV_LIBRARY_DIR}
-                  ${MLPACK_LIBRARY_DIR}
                   ${ARMADILLO_LIBRARY_DIR}
                   ${LAPACK_STATIC_LIBRARY_DIR}
                   ${BLAS_STATIC_LIBRARY_DIR}
+                  ${MLPACK_LIBRARY_DIR}
                   )
 
 ADD_LIBRARY( ${PROJECT_NAME} MODULE 
@@ -138,24 +138,24 @@ ADD_LIBRARY( ${PROJECT_NAME} MODULE
              RandomWSISampler.h RandomWSISampler.cpp
              StainVectorBase.h StainVectorBase.cpp
              StainVectorOpenCV.h StainVectorOpenCV.cpp
-             StainVectorMLPACK.h StainVectorMLPACK.cpp
              StainVectorPixelROI.h StainVectorPixelROI.cpp
              StainVectorMacenko.h StainVectorMacenko.cpp 
-             StainVectorNMF.h StainVectorNMF.cpp 
              BasisTransform.h BasisTransform.cpp
              AngleHistogram.h AngleHistogram.cpp
              MacenkoHistogram.h MacenkoHistogram.cpp
+             StainVectorMLPACK.h StainVectorMLPACK.cpp
+             StainVectorNMF.h StainVectorNMF.cpp 
              )
 
 # Link the library against the Sedeen SDK libraries
 TARGET_LINK_LIBRARIES( ${PROJECT_NAME} 
                        ${SEDEENSDK_LIBRARIES} 
                        ${SEDEENSDK_OPENCV_LIBRARIES} 
-                       ${MLPACK_LIBRARIES}
                        ${MLPACK_REQUIRED_BOOST_LIBRARIES}
-                       ${ARMADILLO_LIBRARY}
                        ${LAPACK_STATIC_LIBRARY}
                        ${BLAS_STATIC_LIBRARY}
+                       ${ARMADILLO_LIBRARY}
+                       ${MLPACK_LIBRARIES}
                        )
 
 # Create or update the .info file in the build directory

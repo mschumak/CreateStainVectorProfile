@@ -1,6 +1,6 @@
 /*=============================================================================
  *
- *  Copyright (c) 2020 Sunnybrook Research Institute
+ *  Copyright (c) 2021 Sunnybrook Research Institute
  *
  *  Permission is hereby granted, free of charge, to any person obtaining a copy
  *  of this software and associated documentation files (the "Software"), to deal
@@ -28,6 +28,7 @@
 #include "CreateStainVectorProfile.h"
 #include "StainVectorPixelROI.h"
 #include "StainVectorMacenko.h"
+#include "StainVectorMLPACK.h"
 #include "StainVectorNMF.h"
 
 #include <algorithm>

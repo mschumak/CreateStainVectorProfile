@@ -1,4 +1,23 @@
-MIT License
+<h1 align="center">Build the Plugin</h1>
+
+## Building Libraries and Dependencies
+
+
+
+
+
+
+# CMake
+
+[TinyXML2](https://github.com/leethomason/tinyxml2.git)
+
+[OpticalDensityThreshold](https://github.com/sedeen-piip-plugins/OpticalDensityThreshold.git)
+
+[StainAnalysisplugin](https://github.com/sedeen-piip-plugins/StainAnalysis-plugin.git)
+
+
+
+## Copyright & License
 
 Copyright (c) 2021 Sunnybrook Research Institute
 

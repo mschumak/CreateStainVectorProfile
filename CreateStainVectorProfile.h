@@ -1,6 +1,6 @@
 /*=============================================================================
  *
- *  Copyright (c) 2020 Sunnybrook Research Institute
+ *  Copyright (c) 2021 Sunnybrook Research Institute
  *
  *  Permission is hereby granted, free of charge, to any person obtaining a copy
  *  of this software and associated documentation files (the "Software"), to deal
@@ -61,8 +61,6 @@ private:
     virtual void run();
     virtual void init(const image::ImageHandle& image);
 
-    //Set the visibility of GUI elements at the end of init
-    //This doesn't work if called from init. It crashes Sedeen.
     //void initialVisibility();
     
 	/// Creates the Color Deconvolution pipeline with a cache
