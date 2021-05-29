@@ -23,6 +23,7 @@
  *=============================================================================*/
 
 #include "StainVectorNMF.h"
+#include <armadillo>
 
 #include <mlpack/methods/amf/amf.hpp>
 
