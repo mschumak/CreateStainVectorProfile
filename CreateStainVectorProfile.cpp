@@ -73,7 +73,6 @@ CreateStainVectorProfile::CreateStainVectorProfile()
     m_stainAnalysisModel(),
     m_stainSeparationAlgorithm(),
     m_useSubsampleOfPixels(),
-    m_subsamplePixelsMantissa(),
     m_subsamplePixelsMagnitude(),
     m_preComputationThreshold(),
     m_stainToDisplay(),
@@ -86,11 +85,14 @@ CreateStainVectorProfile::CreateStainVectorProfile()
 	m_report(""),
     //Set member const values
     m_subsampleMantissaDefaultVal(1.0),
-    m_subsampleMagnitudeDefaultVal(5),
-    m_computationThresholdDefaultVal(15.0),
-    m_computationThresholdMaxVal(300.0),
-    m_displayThresholdDefaultVal(20.0),
-    m_displayThresholdMaxVal(300.0),
+    m_subsamplePixelsMantissa(1.0),
+    m_subsampleMagnitudeDefaultVal(4),
+    m_maxPowerErrorDefaultVal(12),
+    m_computationThresholdDefaultVal(0.15),
+    m_computationThresholdMaxVal(3.0),
+    m_displayThresholdDefaultVal(0.15),
+    m_displayThresholdMaxVal(3.0),
+    m_thresholdStepSizeVal(0.01),
     m_algorithmPercentileDefaultVal(1.0),
     m_algorithmHistogramBinsDefaultVal(1024),
 	m_colorDeconvolution_factory(nullptr),
@@ -158,24 +160,25 @@ void CreateStainVectorProfile::init(const image::ImageHandle& image) {
         "If checked, only a sub-set of the total number of pixels will be used to compute the stain vectors",
         true, false); //default value, optional
 
-    m_subsamplePixelsMantissa = createDoubleParameter(*this, "Num pixels (sci notation: m x 10^n)",
-        "The number of pixels to include in a sub-sample for stain vector computation is set using two values: the mantissa and the order of magnitude (m x 10^n)", 
-        m_subsampleMantissaDefaultVal, 0.0, 10.0, false);
-
     auto imageSize = sedeen::image::getDimensions(image, 0);
-    int maxPower = static_cast<int>(std::ceil((std::log10(static_cast<double>(imageSize.width()*imageSize.height())))));
+    int maxPower = static_cast<int>(std::ceil(std::log10(static_cast<double>(imageSize.width()))
+        + std::log10(static_cast<double>(imageSize.height()))));
+    //Error check the value of maxPower - if something went wrong calculating it, replace it
+    maxPower = (maxPower <= 0) ? m_maxPowerErrorDefaultVal : maxPower;
     int magDefaultVal = (m_subsampleMagnitudeDefaultVal <= maxPower) ? m_subsampleMagnitudeDefaultVal : maxPower;
-    m_subsamplePixelsMagnitude = createIntegerParameter(*this, "Num pixels order of magnitude",
-        "The number of pixels to include in a sub-sample for stain vector computation is set using two values: the mantissa and the order of magnitude (m x 10^n)",
+
+    m_subsamplePixelsMagnitude = createIntegerParameter(*this, "Num pixels power (10^n)",
+        "The number of pixels to include in a sub-sample, as a power of 10 (1.0 x 10^n in scientific notation)",
         magDefaultVal, 0, maxPower, false);
 
     //Set the threshold applied before computing the stain vectors (by whichever method)
     m_preComputationThreshold = createDoubleParameter(*this,
-        "OD x100 Threshold (for computation)",   // Widget label
+        "OD Threshold (for computation)",   // Widget label
         "Threshold applied to exclude pixels from stain vector computation (threshold for display is set below)",
         m_computationThresholdDefaultVal, // Initial value
         0.0,                              // minimum value
         m_computationThresholdMaxVal,     // maximum value
+        m_thresholdStepSizeVal,           // step value
         false);
 
     //Names of stains and ROIs associated with them
@@ -207,17 +210,17 @@ void CreateStainVectorProfile::init(const image::ImageHandle& image) {
     //User can choose whether to apply the threshold or not
     m_applyDisplayThreshold = createBoolParameter(*this, "Display with Threshold Applied",
         "If Display with Threshold Applied is set, the threshold value in the slider below will be applied to the stain-separated image",
-        true, false); //default value, optional
+        false, false); //default value, optional
 
     // Init the user defined threshold value
-    //TEMPORARY!! Can't set precision on DoubleParameter right now, so use 1/100 downscale
     //auto color = getColorSpace(image);
     m_displayThreshold = createDoubleParameter(*this,
-        "OD x100 Threshold (display)",   // Widget label
-        "Threshold applied to the DISPLAYED image (the threshold to use when computing stain vectors is a separate slider)",   // Widget tooltip
+        "OD Threshold (display)",   // Widget label
+        "Threshold applied to the DISPLAYED image (the threshold to use when computing stain vectors is a separate slider)", // Widget tooltip
         m_displayThresholdDefaultVal, // Initial value
         0.0,                          // minimum value
         m_displayThresholdMaxVal,     // maximum value
+        m_thresholdStepSizeVal,       // step value
         false);
 
     //Allow the user to create visible output, without saving the stain vector profile to a file
@@ -246,7 +249,6 @@ void CreateStainVectorProfile::init(const image::ImageHandle& image) {
 //    m_stainAnalysisModel.setVisible(false);
 //    m_stainSeparationAlgorithm.setVisible(true);
 //    m_useSubsampleOfPixels.setVisible(true);
-//    m_subsamplePixelsMantissa.setVisible(true);
 //    m_subsamplePixelsMagnitude.setVisible(true);
 //    m_preComputationThreshold.setVisible(true);
 //
@@ -318,11 +320,14 @@ void CreateStainVectorProfile::run() {
         std::string stainAlgName = theProfile->GetStainSeparationAlgorithmName(stainAlgNumber);
         theProfile->SetNameOfStainSeparationAlgorithm(stainAlgName);
 
-        //number of pixels and the threshold can both be obtained from the GUI parameters
+        //Use a fixed mantissa to simplify the interface
+        m_subsamplePixelsMantissa = m_subsampleMantissaDefaultVal;
+        //number of requested pixels and the threshold can both be obtained from the GUI parameters
         //It is possible for this value to exceed the size of a 32-bit int, so use long
-        double numPixelsDouble = m_subsamplePixelsMantissa * std::pow(10.0, m_subsamplePixelsMagnitude);
-        long int numPixels = static_cast<long int>(numPixelsDouble);
-        double compThreshold = m_preComputationThreshold / 100.0;
+        double numReqPixelsDouble = m_subsamplePixelsMantissa * std::pow(10.0, m_subsamplePixelsMagnitude);
+        long int numRequestedPixels = static_cast<long int>(numReqPixelsDouble);
+        double compThreshold = m_preComputationThreshold;
+        bool useSubsampleOfPixels = m_useSubsampleOfPixels;
 
         //For the Macenko (and Niethammer) method, set the percentile limit 
         //and number of bins in the histogram from the default values set in this class
@@ -349,14 +354,14 @@ void CreateStainVectorProfile::run() {
             //No parameters
         }
         else if (stainAlgNumber == 1) { //"Macenko Decomposition"
-            theProfile->SetSeparationAlgorithmNumPixelsParameter(numPixels);
             theProfile->SetSeparationAlgorithmThresholdParameter(compThreshold);
             theProfile->SetSeparationAlgorithmPercentileParameter(percentileThreshold);
             theProfile->SetSeparationAlgorithmHistogramBinsParameter(numHistoBins);
+            //Recording the number of pixels can't be done until after sampling
         }
         else if (stainAlgNumber == 2) { //"Non-Negative Matrix Factorization"
-            theProfile->SetSeparationAlgorithmNumPixelsParameter(numPixels);
             theProfile->SetSeparationAlgorithmThresholdParameter(compThreshold);
+            //Recording the number of pixels can't be done until after sampling
         }
         else {
             //No parameters
@@ -364,7 +369,8 @@ void CreateStainVectorProfile::run() {
 
         //Calculate the stain vectors and build the operational pipeline
         std::shared_ptr<std::string> errorMessage = std::make_shared<std::string>();
-        bool buildSuccessful = buildPipeline(theProfile, errorMessage);
+        bool buildSuccessful = buildPipeline(theProfile, useSubsampleOfPixels, 
+            numRequestedPixels, errorMessage);
         if (!buildSuccessful) {
             m_outputText.sendText(*errorMessage);
             return;
@@ -415,7 +421,6 @@ bool CreateStainVectorProfile::checkParametersChanged(bool somethingChanged) {
         || m_stainAnalysisModel.isChanged()
         || m_stainSeparationAlgorithm.isChanged()
         || m_useSubsampleOfPixels.isChanged()
-        || m_subsamplePixelsMantissa.isChanged()
         || m_subsamplePixelsMagnitude.isChanged()
         || m_preComputationThreshold.isChanged()
         || m_nameOfStainOne.isChanged()
@@ -439,7 +444,8 @@ bool CreateStainVectorProfile::checkParametersChanged(bool somethingChanged) {
     }
 }//end checkParametersChanged
 
-bool CreateStainVectorProfile::buildPipeline(std::shared_ptr<StainProfile> theProfile, std::shared_ptr<std::string> errorMessage) {
+bool CreateStainVectorProfile::buildPipeline(std::shared_ptr<StainProfile> theProfile, bool useSubsampleOfPixels,
+    long int numRequestedPixels, std::shared_ptr<std::string> errorMessage) {
     using namespace image::tile;
     bool buildSuccessful = false;
     // Get the factory of the source image
@@ -469,22 +475,24 @@ bool CreateStainVectorProfile::buildPipeline(std::shared_ptr<StainProfile> thePr
         subPipelineSuccessful = buildPixelROIPipeline(theProfile, errorMessage);
     }
     else if (stainAlgNumber == 1) { //"Macenko Decomposition"
-        subPipelineSuccessful = buildMacenkoPipeline(theProfile, errorMessage);
+        subPipelineSuccessful = buildMacenkoPipeline(theProfile, useSubsampleOfPixels, 
+            numRequestedPixels, errorMessage);
     }
     else if (stainAlgNumber == 2) { //"Non-Negative Matrix Factorization"
-        subPipelineSuccessful = buildNMFPipeline(theProfile, errorMessage);
+        subPipelineSuccessful = buildNMFPipeline(theProfile, useSubsampleOfPixels,
+            numRequestedPixels, errorMessage);
     }
     else {
         //No action
     }
     buildSuccessful = subPipelineSuccessful;
+    //If there was an error, skip next steps
+    if (buildSuccessful == false) { return false; }
 
     //Send information to the kernel
-    //TEMPORARY! Note that the display threshold value must be divided by 100 here,
-    //because it is not possible to set the precision of a double parameter as of Sedeen 5.4.1
     auto colorDeconvolution_kernel =
         std::make_shared<image::tile::ColorDeconvolution>(DisplayOption, theProfile,
-            m_applyDisplayThreshold, m_displayThreshold/100.0);  //Need to tell it whether to use the threshold or not
+            m_applyDisplayThreshold, m_displayThreshold);  //Need to tell it whether to use the threshold or not
 
     // Create a Factory for the composition of these Kernels
     auto non_cached_factory =
@@ -558,7 +566,7 @@ bool CreateStainVectorProfile::buildPixelROIPipeline(std::shared_ptr<StainProfil
 
     std::shared_ptr<sedeen::image::StainVectorPixelROI> stainVectorFromROI 
         = std::make_shared<sedeen::image::StainVectorPixelROI>(source_factory, regionsOfInterestVector);
-    stainVectorFromROI->ComputeStainVectors(conv_matrix);
+    long int numPixelsSampled = stainVectorFromROI->ComputeStainVectors(conv_matrix);
     //option of error return from here?
     //errorMessage->assign("Could not calculate the stain vectors. Please check your regions of interest and try again.");
 
@@ -574,29 +582,31 @@ bool CreateStainVectorProfile::buildPixelROIPipeline(std::shared_ptr<StainProfil
     return success;
 }//end buildPixelROIPipeline
 
-bool CreateStainVectorProfile::buildMacenkoPipeline(std::shared_ptr<StainProfile> theProfile, std::shared_ptr<std::string> errorMessage) {
+bool CreateStainVectorProfile::buildMacenkoPipeline(std::shared_ptr<StainProfile> theProfile, bool useSubsampleOfPixels,
+    long int numRequestedPixels, std::shared_ptr<std::string> errorMessage) {
     const bool success = true;
     const bool errorVal = false;
 
+    //Check the values of 
     // Get source image properties
     auto source_factory = image()->getFactory();
     
     //Get configuration information from the profile
     int numStains = theProfile->GetNumberOfStainComponents();
-    long int numPixels = theProfile->GetSeparationAlgorithmNumPixelsParameter();
     double compThreshold = theProfile->GetSeparationAlgorithmThresholdParameter();
     double percentileThreshold = theProfile->GetSeparationAlgorithmPercentileParameter();
     int numHistoBins = theProfile->GetSeparationAlgorithmHistogramBinsParameter();
 
     double conv_matrix[9] = { 0.0 };
     double sorted_matrix[9] = { 0.0 };
+    long int sampledPixels(0);
 
     //This pipeline only works for two stains
     if (numStains == 2) {
         //Pass the regions of interest to a StainVectorMacenko object, call ComputeStainVectors
         std::shared_ptr<sedeen::image::StainVectorMacenko> stainVectorFromMacenko
             = std::make_shared<sedeen::image::StainVectorMacenko>(source_factory, compThreshold, percentileThreshold, numHistoBins);
-        stainVectorFromMacenko->ComputeStainVectors(conv_matrix, numPixels);
+        sampledPixels = stainVectorFromMacenko->ComputeStainVectors(conv_matrix, useSubsampleOfPixels, numRequestedPixels);
     }
     else {
         errorMessage->assign("Invalid number of stains chosen. The Macenko method is intended for two stains.");
@@ -608,6 +618,8 @@ bool CreateStainVectorProfile::buildMacenkoPipeline(std::shared_ptr<StainProfile
 
     //Assign the output to the StainProfile 
     bool assignCheck = theProfile->SetProfilesFromDoubleArray(sorted_matrix);
+    //Assign the count of pixels to the stain profile metadata
+    theProfile->SetSeparationAlgorithmNumPixelsParameter(sampledPixels);
 
     if (!assignCheck) {
         errorMessage->assign("Could not assign the computed stain vectors to the stain profile.");
@@ -618,7 +630,8 @@ bool CreateStainVectorProfile::buildMacenkoPipeline(std::shared_ptr<StainProfile
     return success;
 }//end buildMacenkoPipeline
 
-bool CreateStainVectorProfile::buildNMFPipeline(std::shared_ptr<StainProfile> theProfile, std::shared_ptr<std::string> errorMessage) {
+bool CreateStainVectorProfile::buildNMFPipeline(std::shared_ptr<StainProfile> theProfile, bool useSubsampleOfPixels,
+    long int numRequestedPixels, std::shared_ptr<std::string> errorMessage) {
     const bool success = true;
     const bool errorVal = false;
 
@@ -627,18 +640,18 @@ bool CreateStainVectorProfile::buildNMFPipeline(std::shared_ptr<StainProfile> th
 
     //Get configuration information from the profile
     int numStains = theProfile->GetNumberOfStainComponents();
-    long int numPixels = theProfile->GetSeparationAlgorithmNumPixelsParameter();
     double compThreshold = theProfile->GetSeparationAlgorithmThresholdParameter();
 
     double conv_matrix[9] = { 0.0 };
     double sorted_matrix[9] = { 0.0 };
+    long int sampledPixels(0);
 
     //This pipeline only works for two stains
     if (numStains == 2) {
         //Pass the regions of interest to a StainVectorNMF object, call ComputeStainVectors
         std::shared_ptr<sedeen::image::StainVectorNMF> stainVectorFromNMF
             = std::make_shared<sedeen::image::StainVectorNMF>(source_factory, compThreshold);
-        stainVectorFromNMF->ComputeStainVectors(conv_matrix, numPixels);
+        sampledPixels = stainVectorFromNMF->ComputeStainVectors(conv_matrix, useSubsampleOfPixels, numRequestedPixels);
     }
     else {
         errorMessage->assign("Invalid number of stains. Separation by Non-Negative Matrix Factorization is intended for two stains.");
@@ -650,6 +663,8 @@ bool CreateStainVectorProfile::buildNMFPipeline(std::shared_ptr<StainProfile> th
 
     //Assign the output to the StainProfile 
     bool assignCheck = theProfile->SetProfilesFromDoubleArray(sorted_matrix);
+    //Assign the count of pixels to the stain profile metadata
+    theProfile->SetSeparationAlgorithmNumPixelsParameter(sampledPixels);
 
     if (!assignCheck) {
         errorMessage->assign("Could not assign the computed stain vectors to the stain profile.");

@@ -67,15 +67,18 @@ private:
 	//
 	/// \return 
 	/// TRUE if successful, false on error or failure. Error message is placed in pointer to string.
-	bool buildPipeline(std::shared_ptr<StainProfile>, std::shared_ptr<std::string>);
+	bool buildPipeline(std::shared_ptr<StainProfile>, bool useSubsampleOfPixels, 
+        long int numRequestedPixels, std::shared_ptr<std::string>);
     /// Test whether the values or states of the UI parameters have changed
     bool checkParametersChanged(bool);
     ///build the pipeline for getting the stain vectors from pixel values within ROIs. Error message is placed in pointer to string.
     bool buildPixelROIPipeline(std::shared_ptr<StainProfile>, std::shared_ptr<std::string>);
     ///build the pipeline for getting the stain vectors from the Macenko method. Error message is placed in pointer to string.
-    bool buildMacenkoPipeline(std::shared_ptr<StainProfile>, std::shared_ptr<std::string>);
+    bool buildMacenkoPipeline(std::shared_ptr<StainProfile>, bool useSubsampleOfPixels,
+        long int numRequestedPixels, std::shared_ptr<std::string>);
     ///build the pipeline for getting the stain vectors from non-negative matrix factorization. Error message is placed in pointer to string.
-    bool buildNMFPipeline(std::shared_ptr<StainProfile>, std::shared_ptr<std::string>);
+    bool buildNMFPipeline(std::shared_ptr<StainProfile>, bool useSubsampleOfPixels,
+        long int numRequestedPixels, std::shared_ptr<std::string>);
 
 	///Create a text report that combines the output of the stain profile and any other reports
 	std::string generateCompleteReport() const;
@@ -102,11 +105,11 @@ private:
     ///Choices are Manual Regions-of-Interest, Macenko Decomposition, Non-Negative Matrix Factorization
     OptionParameter m_stainSeparationAlgorithm;
 
-    ///If using Macenko or NNMF, this determines whether to use all available pixels or not (NOT is the better choice)
+    ///If using Macenko or NNMF, this determines whether to randomly sample a subset of pixels or use them all
     BoolParameter m_useSubsampleOfPixels;
 
     ///If useSubsampleOfPixels is True, set the number of pixels to sample from the WSI as m x 10^n
-    algorithm::DoubleParameter  m_subsamplePixelsMantissa;
+    double m_subsamplePixelsMantissa;
     ///Order of magnitude for the subsample of pixels
     algorithm::IntegerParameter m_subsamplePixelsMagnitude;
 
@@ -150,10 +153,12 @@ private:
     std::vector<std::string> m_stainToDisplayOptions;
     const double m_subsampleMantissaDefaultVal;
     const int    m_subsampleMagnitudeDefaultVal;
+    const int    m_maxPowerErrorDefaultVal;
     const double m_computationThresholdDefaultVal;
     const double m_computationThresholdMaxVal;
     const double m_displayThresholdDefaultVal;
     const double m_displayThresholdMaxVal;
+    const double m_thresholdStepSizeVal;
 
     const double m_algorithmPercentileDefaultVal;
     const int    m_algorithmHistogramBinsDefaultVal;
@@ -161,7 +166,8 @@ private:
     ///The stain vector profile and its XML file handling
     std::shared_ptr<StainProfile> m_localStainProfile;
     ///Returns the shared_ptr to the local stain profile
-    inline std::shared_ptr<StainProfile> GetLocalStainProfile() { return m_localStainProfile; }
+    inline std::shared_ptr<StainProfile> GetLocalStainProfile() 
+    { return m_localStainProfile; }
 
 };
 

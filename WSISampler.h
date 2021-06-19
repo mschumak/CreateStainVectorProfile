@@ -22,8 +22,8 @@
  *
  *=============================================================================*/
 
-#ifndef SEDEEN_SRC_FILTER_RANDOMWSISAMPLER_H
-#define SEDEEN_SRC_FILTER_RANDOMWSISAMPLER_H
+#ifndef SEDEEN_SRC_FILTER_WSISAMPLER_H
+#define SEDEEN_SRC_FILTER_WSISAMPLER_H
 
 #include "Global.h"
 #include "Geometry.h"
@@ -38,15 +38,21 @@
 namespace sedeen {
 namespace image {
 
-class PATHCORE_IMAGE_API RandomWSISampler {
+class PATHCORE_IMAGE_API WSISampler {
 
 public:
-    RandomWSISampler(std::shared_ptr<tile::Factory> source);
-    virtual ~RandomWSISampler();
+    WSISampler(std::shared_ptr<tile::Factory> source);
+    virtual ~WSISampler();
 
-    ///Populate an OutputArray with pixels chosen without duplication from the source tile factory
-    virtual bool ChooseRandomPixels(cv::OutputArray outputMatrix, const long int numberOfPixels, const double ODthreshold,
-        const int level = 0, const int focusPlane = -1, const int band = -1); //Negative indicates to use the source default values
+    ///Populate an OutputArray with pixels chosen without duplication, return number in output matrix
+    virtual long int ChooseRandomPixels(cv::OutputArray outputMatrix, const long int numberOfPixels, 
+        const double ODthreshold, const int level = 0, const int focusPlane = -1, 
+        const int band = -1); //Negative indicates to use the source default values
+
+    ///Populate an OutputArray with all pixels above the specified ODthreshold, return number in outputMatrix
+    virtual long int GetAllPixels(cv::OutputArray outputMatrix,
+        const double ODthreshold, const int level = 0, const int focusPlane = -1,
+        const int band = -1); //Negative indicates to use the source default values
 
 protected:
     ///Allow derived classes to get the source factory pointer

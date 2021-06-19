@@ -39,10 +39,10 @@ public:
     StainVectorNMF(std::shared_ptr<tile::Factory> source, double ODthreshold = 0.15);
     ~StainVectorNMF();
 
-    ///Fill the 9-element array with three stain vectors
-    virtual void ComputeStainVectors(double (&outputVectors)[9]);
-    ///Overload of the basic method, includes sampleSize parameter
-    void ComputeStainVectors(double (&outputVectors)[9], const long int sampleSize);
+    ///Fill the 9-element array with three stain vectors, return the number of pixels used
+    virtual long int ComputeStainVectors(double (&outputVectors)[9]);
+    ///Overload of the basic method, includes useSubsample and sampleSize parameter
+    long int ComputeStainVectors(double(&outputVectors)[9], bool useSubsample, long int sampleSize = 0);
 
     ///Get/Set the average optical density threshold
     inline const double GetODThreshold() const { return m_avgODThreshold; }
@@ -54,6 +54,11 @@ public:
     ///Get/Set the sample size, the number of pixels to choose
     inline void SetSampleSize(const long int s) { m_sampleSize = s; }
 
+    ///Get/Set useSubsampleOfPixels, to determine if all valid pixels or subset should be used
+    inline const bool GetUseSubsampleOfPixels() const { return m_useSubsampleOfPixels; }
+    ///Get/Set useSubsampleOfPixels, to determine if all valid pixels or subset should be used
+    inline void SetUseSubsampleOfPixels(const bool u) { m_useSubsampleOfPixels = u; }
+
 protected:
     ///Get/Set the number of stains
     inline const int GetNumStains() const { return m_numStains; }
@@ -63,8 +68,10 @@ protected:
 private:
     double m_avgODThreshold;
 
-    ///The number of pixels that should be used to calculate the stain vectors
+    ///The number of pixels that should be used to calculate the stain vectors, if subsampling
     long int m_sampleSize;
+    ///Bool to specify if all pixels above threshold should be used (false) or a subsample (true)
+    bool m_useSubsampleOfPixels;
     ///The number of stains to obtain. Set to be 2 in member initialization of constructor.
     int m_numStains;
 };

@@ -41,14 +41,15 @@ public:
     virtual ~StainVectorPixelROI();
 
     ///Fill the 9-element array with three stain vectors
-    virtual void ComputeStainVectors(double(&outputVectors)[9]);
+    virtual long int ComputeStainVectors(double(&outputVectors)[9]);
 
     ///Get/Set the vector of regions of interest
     inline const std::vector<std::shared_ptr<GraphicItemBase>> GetRegionsOfInterest() const { return m_regionsOfInterest; }
     ///Get/Set the vector of regions of interest
     inline void SetRegionsOfInterest(const std::vector<std::shared_ptr<GraphicItemBase>> roi) { m_regionsOfInterest = roi; }
 
-    void getmeanRGBODfromROI(RawImage, double(&rgbOD)[3]);
+    ///Calculate mean RGB values from a RawImage, and return the number of pixels averaged
+    long int getmeanRGBODfromROI(RawImage, double(&rgbOD)[3]);
 
 private:
     std::vector<std::shared_ptr<GraphicItemBase>> m_regionsOfInterest;

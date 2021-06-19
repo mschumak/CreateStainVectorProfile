@@ -41,17 +41,17 @@ StainVectorPixelROI::StainVectorPixelROI(std::shared_ptr<tile::Factory> source,
 StainVectorPixelROI::~StainVectorPixelROI(void) {
 }//end destructor
 
-void StainVectorPixelROI::ComputeStainVectors(double (&outputVectors)[9]) {
+long int StainVectorPixelROI::ComputeStainVectors(double (&outputVectors)[9]) {
     //Error checks
-    if (this->GetSourceFactory() == nullptr) { return; }
+    if (this->GetSourceFactory() == nullptr) { return 0; }
     if (m_regionsOfInterest.empty()) {
-        return;
+        return 0;
     }
     else {
         for (auto it = m_regionsOfInterest.begin(); it != m_regionsOfInterest.end(); ++it) {
             if ((*it) == nullptr) {
                 //Missing region of interest
-                return;
+                return 0;
             }
         }
     }
@@ -65,6 +65,7 @@ void StainVectorPixelROI::ComputeStainVectors(double (&outputVectors)[9]) {
     // Get image from the output factory
     auto compositor = image::tile::Compositor(this->GetSourceFactory());
     double  rgbOD[3];
+    long int totalSize(0);
     for (size_t j = 0; j < numberOfRegions; j++)
     {
         rgbOD[0] = 0.0;
@@ -72,7 +73,7 @@ void StainVectorPixelROI::ComputeStainVectors(double (&outputVectors)[9]) {
         rgbOD[2] = 0.0;
         Rect rect = containingRect(m_regionsOfInterest.at(j)->graphic());
         RawImage ROI = compositor.getImage(rect, Size(rect.width(), rect.height()));
-        getmeanRGBODfromROI(ROI, rgbOD);
+        totalSize += getmeanRGBODfromROI(ROI, rgbOD);
 
         tempOut[j * 3] = rgbOD[0];
         tempOut[j * 3 + 1] = rgbOD[1];
@@ -83,20 +84,22 @@ void StainVectorPixelROI::ComputeStainVectors(double (&outputVectors)[9]) {
     for (int i = 0; i < 9; i++) {
         outputVectors[i] = tempOut[i];
     }
+    return totalSize;
 }//end ComputeStainVectors
 
-void StainVectorPixelROI::getmeanRGBODfromROI(RawImage ROI, double(&rgbOD)[3])
+long int StainVectorPixelROI::getmeanRGBODfromROI(RawImage ROI, double(&rgbOD)[3])
 {
     if (ROI.isNull())
-        return;
+        return 0;
     //temporary array
     double tempOD[3] = { 0.0 };
 
     //Perform fast color to OD conversion using a lookup table
     std::shared_ptr<ODConversion> converter = std::make_shared<ODConversion>();
 
-    int imageSize = ROI.size().width()*ROI.size().height();
-    double log255 = log(255.0);
+    long int imageSize = static_cast<long int>(ROI.size().width())
+        * static_cast<long int>(ROI.size().height());
+    //double log255 = log(255.0);
     int y = 0, x = 0;
     for (int i = 0; i < imageSize; i++) {
         x = i % ROI.size().width();
@@ -109,9 +112,10 @@ void StainVectorPixelROI::getmeanRGBODfromROI(RawImage ROI, double(&rgbOD)[3])
         tempOD[2] = tempOD[2] + converter->LookupRGBtoOD(ROI.at(x, y, 2).as<int>());
     }
     //average of all pixels in region of interest
-    rgbOD[0] = tempOD[0] / imageSize;
-    rgbOD[1] = tempOD[1] / imageSize;
-    rgbOD[2] = tempOD[2] / imageSize;
+    rgbOD[0] = tempOD[0] / static_cast<double>(imageSize);
+    rgbOD[1] = tempOD[1] / static_cast<double>(imageSize);
+    rgbOD[2] = tempOD[2] / static_cast<double>(imageSize);
+    return imageSize;
 }//end getmeanRGBODfromROI
 
 } // namespace image

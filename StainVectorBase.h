@@ -29,7 +29,7 @@
 #include "Geometry.h"
 #include "Image.h"
 
-#include "RandomWSISampler.h"
+#include "WSISampler.h"
 
 namespace sedeen {
 namespace image {
@@ -40,7 +40,7 @@ public:
     virtual ~StainVectorBase();
 
     ///The core functionality of a stain vector class; fills the 9-element array with three stain vectors
-    virtual void ComputeStainVectors(double (&outputVectors)[9]);
+    virtual long int ComputeStainVectors(double (&outputVectors)[9]);
 
 protected:
     ///Returns a shared pointer to the source factory, protected so only derived classes may access it
@@ -48,11 +48,11 @@ protected:
     ///Sets the source factory, protected so only derived classes may modify it
     inline void SetSourceFactory(std::shared_ptr<tile::Factory> source) { m_sourceFactory = source; }
     ///Access the random pixel chooser
-    inline std::shared_ptr<RandomWSISampler> GetRandomWSISampler() { return m_randomWSISampler; }
+    inline std::shared_ptr<WSISampler> GetWSISampler() { return m_WSISampler; }
 
 private:
     std::shared_ptr<tile::Factory> m_sourceFactory;
-    std::shared_ptr<RandomWSISampler> m_randomWSISampler;
+    std::shared_ptr<WSISampler> m_WSISampler;
 };
 
 } // namespace image

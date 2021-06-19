@@ -29,14 +29,15 @@ namespace image {
 
 StainVectorBase::StainVectorBase(std::shared_ptr<tile::Factory> source) 
     : m_sourceFactory(source),
-    m_randomWSISampler(std::make_shared<RandomWSISampler>(source))
+    m_WSISampler(std::make_shared<WSISampler>(source))
 {
 }//end constructor
 
 StainVectorBase::~StainVectorBase(void) {
 }//end destructor
 
-void StainVectorBase::ComputeStainVectors(double (&outputVectors)[9]) {
+long int StainVectorBase::ComputeStainVectors(double (&outputVectors)[9]) {
+    return 0;
 }//end ComputeStainVectors
 
 } // namespace image

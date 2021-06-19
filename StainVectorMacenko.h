@@ -41,9 +41,9 @@ public:
     virtual ~StainVectorMacenko();
 
     ///Fill the 9-element array with three stain vectors
-    virtual void ComputeStainVectors(double (&outputVectors)[9]);
-    ///Overload of the basic method, includes sampleSize parameter
-    void ComputeStainVectors(double (&outputVectors)[9], long int sampleSize);
+    virtual long int ComputeStainVectors(double (&outputVectors)[9]);
+    ///Overload of the basic method, includes useSubsample and sampleSize parameter
+    long int ComputeStainVectors(double (&outputVectors)[9], bool useSubsample, long int sampleSize = 0);
 
     ///Get/Set the average optical density threshold
     inline const double GetODThreshold() const { return m_avgODThreshold; }
@@ -60,6 +60,11 @@ public:
     ///Get/Set the sample size, the number of pixels to choose
     inline void SetSampleSize(const long int s) { m_sampleSize = s; }
 
+    ///Get/Set useSubsampleOfPixels, to determine if all valid pixels or subset should be used
+    inline const bool GetUseSubsampleOfPixels() const { return m_useSubsampleOfPixels; }
+    ///Get/Set useSubsampleOfPixels, to determine if all valid pixels or subset should be used
+    inline void SetUseSubsampleOfPixels(const bool u) { m_useSubsampleOfPixels = u; }
+
     ///Get/Set the number of bins in the angle histogram (in MacenkoHistogram)
     inline const int GetNumHistogramBins() const { return m_numHistogramBins; }
     ///Get/Set the number of bins in the angle histogram (in MacenkoHistogram)
@@ -72,6 +77,8 @@ private:
 
     ///The number of pixels that should be used to calculate the stain vectors
     long int m_sampleSize;
+    ///Bool to specify if all pixels above threshold should be used (false) or a subsample (true)
+    bool m_useSubsampleOfPixels;
 };
 
 } // namespace image
